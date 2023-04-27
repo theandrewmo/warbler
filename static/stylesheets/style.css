@@ -508,7 +508,7 @@ p.card-bio {
   min-width: 105px;
 }
 
-#messages-form {
+#messages-form, #messages-form2 {
   position: absolute;
   top: 4px;
   right: 4px;

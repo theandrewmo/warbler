@@ -5,7 +5,7 @@ from flask_debugtoolbar import DebugToolbarExtension
 from sqlalchemy.exc import IntegrityError
 
 from forms import UserAddForm, LoginForm, MessageForm, UserEditForm
-from models import db, connect_db, User, Message
+from models import db, connect_db, User, Message, Likes
 
 CURR_USER_KEY = "curr_user"
 
@@ -259,6 +259,62 @@ def delete_user():
 
     return redirect("/signup")
 
+@app.route('/users/add_like/<int:message_id>', methods=['POST'])
+def like_message(message_id):
+    """ Likes a message """
+
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
+    
+    message = Message.query.get_or_404(message_id)
+
+    if message.user_id != g.user.id:
+        newLike = Likes(user_id = g.user.id, message_id = message_id)
+        db.session.add(newLike)
+        db.session.commit()
+        flash('like added', category='success')
+        return redirect('/')
+
+    flash('users own message, can not like', category='danger')
+    return redirect('/')
+
+@app.route('/users/un_like/<int:message_id>', methods=['POST'])
+def unlike_message(message_id):
+    """ Un-likes a message """
+
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
+    
+    message = Message.query.get_or_404(message_id)
+
+    if message.user_id != g.user.id:
+        Likes.query.filter_by(message_id=message_id).delete()
+        db.session.commit()
+        flash('like removed', category='success')
+        return redirect('/')
+
+    flash('users own message, can not un-like', category='danger')
+    return redirect('/')
+
+@app.route('/users/<int:user_id>/likes')
+def show_likes(user_id):
+    """ shows liked messages """
+
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
+
+    user = User.query.get_or_404(g.user.id)
+    messages = user.likes
+
+    user_likes = Likes.query.filter(Likes.user_id == g.user.id).all()
+    likes = [like.message_id for like in user_likes]
+    
+    print(messages)
+
+    return render_template('/users/likes.html', user=user, messages=messages, likes=likes)
 
 ##############################################################################
 # Messages routes:
@@ -330,8 +386,9 @@ def homepage():
                     .order_by(Message.timestamp.desc())
                     .limit(100)
                     .all())
-
-        return render_template('home.html', messages=messages)
+        user_likes = Likes.query.filter(Likes.user_id == g.user.id).all()
+        likes = [like.message_id for like in user_likes]
+        return render_template('home.html', messages=messages, likes=likes)
 
     else:
         return render_template('home-anon.html')
