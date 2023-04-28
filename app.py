@@ -390,6 +390,8 @@ def homepage():
         likes = [like.message_id for like in user_likes]
         return render_template('home.html', messages=messages, likes=likes)
 
+    
+
     else:
         return render_template('home-anon.html')
 
